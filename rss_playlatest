@@ -1,0 +1,2 @@
+#!/bin/bash
+mpv --cache-min 1 --cache 400000 $(gtfu $1)
