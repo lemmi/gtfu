@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
 	"encoding/xml"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -17,14 +17,20 @@ func checkerr(err error) {
 
 type RSS struct {
 	XMLName xml.Name `xml:"rss"`
-	Enclosures []struct {
-		Url string `xml:"url,attr"`
-	} `xml:"channel>item>enclosure"`
+	//Enclosures []struct {
+	//	Url string `xml:"url,attr"`
+	//} `xml:"channel>item>enclosure"`
+	Item []struct {
+		Enclosure struct {
+			Url string `xml:"url,attr"`
+		} `xml:"enclosure"`
+		Link string `xml:"link"`
+	} `xml:"channel>item"`
 }
 
 func gtfu(url string, resultchan chan<- string) {
 	result := ""
-	defer func () { resultchan<-result }()
+	defer func() { resultchan <- result }()
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -36,20 +42,24 @@ func gtfu(url string, resultchan chan<- string) {
 	dec := xml.NewDecoder(resp.Body)
 
 	var rss RSS
-	if dec.Decode(&rss) != nil{
+	if dec.Decode(&rss) != nil {
 		fmt.Println(err)
 		return
 	}
 
-	if len(rss.Enclosures) == 0 {
-		return
+	if len(rss.Item) > 0 {
+		if link := rss.Item[0].Link; link != "" {
+			result = link
+		} else if link := rss.Item[0].Enclosure.Url; link != "" {
+			result = link
+		}
 	}
 
-	result = rss.Enclosures[0].Url
+	return
 }
 
 func main() {
-	resultchan := make(chan string, len(os.Args) - 1)
+	resultchan := make(chan string, len(os.Args)-1)
 	for _, url := range os.Args[1:] {
 		go gtfu(url, resultchan)
 	}
